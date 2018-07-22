@@ -107,6 +107,7 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, functio
 #calculate and package tuning curve features using the best fit Carandini-form
     #print('goh')
     fitParams, SSE = function_class_fit(stimuli, responses, mFixed=mFixed)
+    #add some
 
     Params = {}
     if not mFixed:
