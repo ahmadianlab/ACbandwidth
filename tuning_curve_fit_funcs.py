@@ -8,11 +8,11 @@ def carandini_form(x, mExp, sigmaD, sigmaS, RD, RS):
 #the Carandini form (from Ayaz et al. (2013)) for Bandwidth tuning curve, inspired by the divisive normalization model
     return (RD*(erf(x/(np.sqrt(2)*sigmaD)))**mExp)/(1+RS*(erf(x/(np.sqrt(2)*sigmaS)))**mExp)
 
-#-------------------------------------------------------------------------------
-def carandini_form_fixed_m(x, sigmaD, sigmaS, RD, RS):
-#the Carandini form (from Ayaz et al. (2013)) for Bandwidth tuning curve, inspired by the divisive normalization model
-    mExp = 4
-    return (RD*(erf(x/(np.sqrt(2)*sigmaD)))**mExp)/(1+RS*(erf(x/(np.sqrt(2)*sigmaS)))**mExp)
+# #-------------------------------------------------------------------------------
+# def carandini_form_fixed_m(x, sigmaD, sigmaS, RD, RS):
+# #the Carandini form (from Ayaz et al. (2013)) for Bandwidth tuning curve, inspired by the divisive normalization model
+#     mExp = 4
+#     return (RD*(erf(x/(np.sqrt(2)*sigmaD)))**mExp)/(1+RS*(erf(x/(np.sqrt(2)*sigmaS)))**mExp)
 
 
 #-------------------------------------------------------------------------------
@@ -20,15 +20,15 @@ def diff_gauss_form(x, mExp, sigmaD, sigmaS, RD, RS):
 #the difference of Gaussians form for Bandwidth tuning curve, inspired by "subtractive normalization"
     return RD* (erf(x/(np.sqrt(2)*sigmaD)))**mExp - RS* erf(x/(np.sqrt(2)*sigmaS))**mExp
 
-#-------------------------------------------------------------------------------
-def diff_gauss_form_fixed_m(x, sigmaD, sigmaS, RD, RS):
-#the difference of Gaussians form for Bandwidth tuning curve, inspired by "subtractive normalization"
-    mExp = 4
-    return RD* (erf(x/(np.sqrt(2)*sigmaD)))**mExp - RS* erf(x/(np.sqrt(2)*sigmaS))**mExp
+# #-------------------------------------------------------------------------------
+# def diff_gauss_form_fixed_m(x, sigmaD, sigmaS, RD, RS):
+# #the difference of Gaussians form for Bandwidth tuning curve, inspired by "subtractive normalization"
+#     mExp = 4
+#     return RD* (erf(x/(np.sqrt(2)*sigmaD)))**mExp - RS* erf(x/(np.sqrt(2)*sigmaS))**mExp
 
 
 #-------------------------------------------------------------------------------
-def carandini_fit(stimuli, responses, RFscale = None, mFixed=False):
+def carandini_fit(stimuli, responses, RFscale = None, mFixed=None):
 #find best fit of Carandini form (Ayaz et al. 2013) to bandwidth tuning curve of one cell using least squares
     from scipy.optimize import curve_fit
 
@@ -76,11 +76,11 @@ def carandini_fit(stimuli, responses, RFscale = None, mFixed=False):
     initpars[4,p] = 5 # RS
 
     curve_form = carandini_form
-    if mFixed:
+    if mFixed is not None:
         Upper = Upper[1:]
         Lower = Lower[1:]
         initpars = initpars[1:,:]
-        curve_form = carandini_form_fixed_m
+        curve_form = lambda x, sigmaD, sigmaS, RD, RS: carandini_form(x, mFixed, sigmaD, sigmaS, RD, RS)#carandini_form_fixed_m
 
     fitParams = None
     fitResponses = None
@@ -104,7 +104,7 @@ def carandini_fit(stimuli, responses, RFscale = None, mFixed=False):
 
 
 #-------------------------------------------------------------------------------
-def diff_of_gauss_fit(stimuli, responses, RFscale = None, mFixed=False):
+def diff_of_gauss_fit(stimuli, responses, RFscale = None, mFixed=None):
 #find best fit of difference of gaussians model (really diff of erf's) to bandwidth tuning curve of one cell using least squares
     from scipy.optimize import curve_fit
 
@@ -144,11 +144,11 @@ def diff_of_gauss_fit(stimuli, responses, RFscale = None, mFixed=False):
     #initpars[3,p] = responses[1]/(erf(stimuli[1]/np.sqrt(2)/initpars[1,p]))**initpars[0,p] # RD
 
     curve_form = diff_gauss_form
-    if mFixed:
+    if mFixed is not None:
         Upper = Upper[1:]
         Lower = Lower[1:]
         initpars = initpars[1:,:]
-        curve_form = diff_gauss_form_fixed_m
+        curve_form = lambda x, sigmaD, sigmaS, RD, RS: diff_gauss_form(x, mFixed, sigmaD, sigmaS, RD, RS)#diff_gauss_form_fixed_m
 
     fitParams = None
     fitResponses = None
@@ -171,7 +171,7 @@ def diff_of_gauss_fit(stimuli, responses, RFscale = None, mFixed=False):
     return fitParams, SSE #, fitResponses
 
 #-------------------------------------------------------------------------------
-def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, function_class_fit="carandini_fit"):
+def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=None, function_class_fit="carandini_fit"):
 # calculate and package tuning curve features using the best fit Carandini-form (default)
 # or the best fit difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
 
@@ -184,12 +184,16 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, functio
         fitParams, SSE = diff_of_gauss_fit(stimuli, responses, mFixed=mFixed)
 
     Params = {}
-    if not mFixed:
+    if mFixed is None:
         Params['m'] = fitParams[0]
-    Params['sigmaD'] = fitParams[1-1*mFixed]
-    Params['sigmaS'] = fitParams[2-1*mFixed]
-    Params['RD'] = fitParams[3-1*mFixed]
-    Params['RS'] = fitParams[4-1*mFixed]
+        decr = 0
+    else:
+        Params['m'] = mFixed
+        decr = 1
+    Params['sigmaD'] = fitParams[1-decr]
+    Params['sigmaS'] = fitParams[2-decr]
+    Params['RD'] = fitParams[3-decr]
+    Params['RS'] = fitParams[4-decr]
 
     #calculate goodness of fit
     FitGoodness = {}
@@ -199,12 +203,12 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, functio
 
     if function_class_fit=="carandini_fit":
         curve_form = carandini_form
-        if mFixed:
-            curve_form = carandini_form_fixed_m
+        if mFixed is not None:
+            curve_form = lambda x, sigmaD, sigmaS, RD, RS: carandini_form(x, mFixed, sigmaD, sigmaS, RD, RS)#carandini_form_fixed_m
     elif function_class_fit=="diff_of_gauss_fit":
         curve_form = diff_gauss_form
-        if mFixed:
-            curve_form = diff_gauss_form_fixed_m
+        if mFixed is not None:
+            curve_form = lambda x, sigmaD, sigmaS, RD, RS: diff_gauss_form(x, mFixed, sigmaD, sigmaS, RD, RS)#diff_gauss_form_fixed_m
 
     Stats = {}
     test_resps = curve_form(test_stims, *fitParams)
@@ -220,7 +224,7 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, functio
 
 
 #-------------------------------------------------------------------------------
-def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=False, function_class_fit="carandini_fit"):
+def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=None, function_class_fit="carandini_fit"):
 #fit all cells in a data-file with Carandini form (default) or the difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
     data = np.load(Datafile)
     EvokedRates = data[Celltype+Response_type+'Responses']
