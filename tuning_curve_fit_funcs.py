@@ -18,13 +18,13 @@ def carandini_form_fixed_m(x, sigmaD, sigmaS, RD, RS):
 #-------------------------------------------------------------------------------
 def diff_gauss_form(x, mExp, sigmaD, sigmaS, RD, RS):
 #the difference of Gaussians form for Bandwidth tuning curve, inspired by "subtractive normalization"
-    return RD* (erf(x/(np.sqrt(2)*sigmaD)))**mExp - RS* erf(x/(np.sqrt(2)*sigmaS)))**mExp
+    return RD* (erf(x/(np.sqrt(2)*sigmaD)))**mExp - RS* erf(x/(np.sqrt(2)*sigmaS))**mExp
 
 #-------------------------------------------------------------------------------
 def diff_gauss_form_fixed_m(x, sigmaD, sigmaS, RD, RS):
 #the difference of Gaussians form for Bandwidth tuning curve, inspired by "subtractive normalization"
     mExp = 4
-    return RD* (erf(x/(np.sqrt(2)*sigmaD)))**mExp - RS* erf(x/(np.sqrt(2)*sigmaS)))**mExp
+    return RD* (erf(x/(np.sqrt(2)*sigmaD)))**mExp - RS* erf(x/(np.sqrt(2)*sigmaS))**mExp
 
 
 #-------------------------------------------------------------------------------
