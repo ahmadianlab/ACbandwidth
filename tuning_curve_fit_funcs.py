@@ -166,18 +166,22 @@ def diff_of_gauss_fit(stimuli, responses, RFscale = None, mFixed=False):
                 SSE = SqErr
 
         except RuntimeError:
-            print("Could not fit {} curve to tuning data with the {}-th initialization set.".format('Carandini',p))
+            print("Could not fit {} curve to tuning data with the {}-th initialization set.".format('Difference of Gaussian',p))
 
     return fitParams, SSE #, fitResponses
 
 #-------------------------------------------------------------------------------
-def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, function_class_fit=carandini_fit):
+def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, function_class_fit="carandini_fit"):
 # calculate and package tuning curve features using the best fit Carandini-form (default)
 # or the best fit difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
 
     #print('goh')
-    fitParams, SSE = function_class_fit(stimuli, responses, mFixed=mFixed)
-    #add some
+#    fitParams, SSE = function_class_fit(stimuli, responses, mFixed=mFixed)
+#    fitParams, SSE = eval(function_class_fit + "(stimuli, responses, mFixed=mFixed)")
+    if function_class_fit=="carandini_fit":
+        fitParams, SSE = carandini_fit(stimuli, responses, mFixed=mFixed)
+    elif function_class_fit=="diff_of_gauss_fit":
+        fitParams, SSE = diff_of_gauss_fit(stimuli, responses, mFixed=mFixed)
 
     Params = {}
     if not mFixed:
@@ -193,9 +197,14 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, functio
     SStotal = np.sum((responses-np.mean(responses))**2)
     FitGoodness['R2'] = 1-(SSE/SStotal)
 
-    curve_form = carandini_form
-    if mFixed:
-        curve_form = carandini_form_fixed_m
+    if function_class_fit=="carandini_fit":
+        curve_form = carandini_form
+        if mFixed:
+            curve_form = carandini_form_fixed_m
+    elif function_class_fit=="diff_of_gauss_fit":
+        curve_form = diff_gauss_form
+        if mFixed:
+            curve_form = diff_gauss_form_fixed_m
 
     Stats = {}
     test_resps = curve_form(test_stims, *fitParams)
@@ -211,7 +220,7 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, functio
 
 
 #-------------------------------------------------------------------------------
-def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=False, function_class_fit=carandini_fit):
+def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=False, function_class_fit="carandini_fit"):
 #fit all cells in a data-file with Carandini form (default) or the difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
     data = np.load(Datafile)
     EvokedRates = data[Celltype+Response_type+'Responses']
