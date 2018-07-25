@@ -105,58 +105,50 @@ def carandini_fit(stimuli, responses, RFscale = None, mFixed=False):
 
 #-------------------------------------------------------------------------------
 def diff_of_gauss_fit(stimuli, responses, RFscale = None, mFixed=False):
-#find best fit of Carandini form (Ayaz et al. 2013) to bandwidth tuning curve of one cell using least squares
+#find best fit of difference of gaussians model (really diff of erf's) to bandwidth tuning curve of one cell using least squares
     from scipy.optimize import curve_fit
 
     if RFscale is None:
         RFscale = stimuli[2] # = stimuli[np.argmax(responses)] # = summation field size
     MaxResp = np.max(np.abs(responses))
+    MaxNegResp = np.max(-responses)
 
     #set up Lower and Upper bounds on Parameters
     maxM = 10
-    maxsigD = np.max(stimuli) #3* np.max(stimuli) #max(xs)/2
-    maxsigS = 2* np.max(stimuli) #4* np.max(stimuli)
-    maxRD = 10* MaxResp
-    maxRS = 20 #100
-    Upper = np.asarray([maxM ,maxsigD ,maxsigS , maxRD, maxRS])
+    maxsigD = 3*np.max(stimuli) #3* np.max(stimuli) #max(xs)/2
+    maxsigS = 3*np.max(stimuli) #4* np.max(stimuli)
+    maxRD = 2* MaxResp #10* MaxResp
+    Upper = np.asarray([maxM ,maxsigD ,maxsigS , maxRD, maxRD])
     #Lower = np.asarray([1, RFscale/10., RFscale/10.,   0.001*maxRD, 0])
-    Lower= np.asarray([1 , RFscale/100., RFscale/100., -maxRD ,  0])
+    Lower= np.asarray([1 , RFscale/100., RFscale/100., 0 ,  0])
+    #                 [m  , sigmaD     , sigmaS      , RD     , RS ]
 
     #set up different initialization sets for parameters
-    Nparsets = 8
-    initpars = np.asarray([[2.5, RFscale, 2*RFscale, MaxResp, 1]]).T * np.ones((5,Nparsets)) #uses broadcasting. This gives error (shape mismatch for broadcasting): initpars = np.ones((5,Nparsets)) * np.asarray([2.5, RFscale, 2*RFscale, MaxResp, 1])
+    Nparsets = 5
+    initpars = np.asarray([[2.5, RFscale, 2*RFscale, MaxResp, MaxNegResp]]).T * np.ones((5,Nparsets)) #uses broadcasting. This gives error (shape mismatch for broadcasting): initpars = np.ones((5,Nparsets)) * np.asarray([2.5, RFscale, 2*RFscale, MaxResp, 1])
     #                      [m  , sigmaD , sigmaS   , RD    , RS ]
     p = 0
-    #initpars[3,p] = responses[1]/(erf(stimuli[1]/np.sqrt(2)/initpars[1,p]))**initpars[0,p] # RD
-    initpars[3,p] *= 2
-    p += 1
-    initpars[3,p] = -initpars[3,p-1] # RD
+    # #initpars[3,p] = responses[1]/(erf(stimuli[1]/np.sqrt(2)/initpars[1,p]))**initpars[0,p] # RD
+    initpars[3,p] *= .5
     p += 1
     initpars[0,p] = 2.0 # m
     initpars[4,p] = 0.01 # RS
     p += 1
-    initpars[:,p] = initpars[:,p-1]
-    initpars[3,p] = -initpars[3,p-1] # RD
-    p += 1
     initpars[0,p] = 2.0 # m
-    initpars[3,p] *= 4 # RD
-    initpars[4,p] = 5 # RS
-    p += 1
-    initpars[:,p] = initpars[:,p-1]
-    initpars[3,p] = -initpars[3,p-1] # RD
+    initpars[3,p] *= 2 # RD
+    initpars[4,p] *= 2 # RS
     p += 1
     initpars[0,p] = 3.0 # m
     initpars[1,p] = 4*RFscale # sigmaD
     initpars[2,p] = RFscale # sigmaS
     #initpars[3,p] = responses[1]/(erf(stimuli[1]/np.sqrt(2)/initpars[1,p]))**initpars[0,p] # RD
-    initpars[4,p] = 5 # RS
 
-    curve_form = carandini_form
+    curve_form = diff_gauss_form
     if mFixed:
         Upper = Upper[1:]
         Lower = Lower[1:]
         initpars = initpars[1:,:]
-        curve_form = carandini_form_fixed_m
+        curve_form = diff_gauss_form_fixed_m
 
     fitParams = None
     fitResponses = None
@@ -220,7 +212,7 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=False, functio
 
 #-------------------------------------------------------------------------------
 def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=False, function_class_fit=carandini_fit):
-#fit all cells in a data-file with Carandini form
+#fit all cells in a data-file with Carandini form (default) or the difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
     data = np.load(Datafile)
     EvokedRates = data[Celltype+Response_type+'Responses']
     BaselineRates = data[Celltype+Response_type+'BaselineSpikeRates']
