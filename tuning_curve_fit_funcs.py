@@ -220,15 +220,26 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=None, function
     Stats['wnResp'] = test_resps[-1]
     Stats['SuppInd'] = 1 - Stats['wnResp']/Stats['maxResp']
 
-    return Params, FitGoodness, Stats, test_resps
+    RawStats = {}
+    RawStats['maxResp'] = np.max(responses)
+    RawStats['maxNegResp'] = -np.max(-responses)
+    RawStats['maxAbsResp'] = np.max(np.abs(responses))
+    RawStats['prefBW'] = stimuli[np.argmax(responses)]
+    RawStats['AbsPrefBW'] = stimuli[np.argmax(np.abs(responses))]
+    RawStats['wnResp'] = responses[-1]
+    RawStats['SuppInd'] = 1 - RawStats['wnResp']/RawStats['maxResp']
+
+    return Params, FitGoodness, Stats, test_resps, RawStats
 
 
 #-------------------------------------------------------------------------------
 def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=None, function_class_fit="carandini_fit"):
-#fit all cells in a data-file with Carandini form (default) or the difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
+# fit all cells in a data-file with Carandini form (default) or the difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
+# and package the fit-parameters and TC-features of all cells of a given type into a "features dictionary"
+
     data = np.load(Datafile)
     EvokedRates = data[Celltype+Response_type+'Responses']
-    BaselineRates = data[Celltype+Response_type+'BaselineSpikeRates']
+    Baselines = data[Celltype+Response_type+'BaselineSpikeRates']
     Bandwidths = data['stimulusBandwidth']
     data.close()
 
@@ -237,33 +248,36 @@ def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave =
 
     rawTCs = EvokedRates#.copy()
     if BLisZeroBW:
-        rawTCs[0,:] = BaselineRates #replace pure tone responses with baseline (=0 bandwidth = no stimulus)
+        rawTCs[0,:] = Baselines #replace pure tone responses with baseline (=0 bandwidth = no stimulus)
     rawTCs = rawTCs - rawTCs[0,:] #remove the BW=0 from all, uses broadcasting
 
     StatsList = []
+    RawStatsList = []
     ParamsList = []
     GOFlist = []
     fitTCs = np.zeros((len(test_BWs),rawTCs.shape[1]))
     start_time = time.time()
     for cel in tqdm.tqdm(range(rawTCs.shape[1])): #loop over all pyr cells
         #print("cell number {}".format(cel))
-        Params, FitGoodness, Stats, testResponses = extract_stats_from_fit(Bandwidths, rawTCs[:,cel], test_BWs, mFixed=mFixed, function_class_fit=function_class_fit)
+        Params, FitGoodness, Stats, testResponses, RawStats = extract_stats_from_fit(Bandwidths, rawTCs[:,cel], test_BWs, mFixed=mFixed, function_class_fit=function_class_fit)
         StatsList.append(Stats)
+        RawStatsList.append(RawStats)
         ParamsList.append(Params)
         GOFlist.append(FitGoodness)
         fitTCs[:,cel] = testResponses
     end_time = time.time()
     print("\n Elapsed time was %g seconds" % (end_time - start_time))
 
-    return StatsList, ParamsList, GOFlist, fitTCs, rawTCs, test_BWs, Bandwidths, BaselineRates
+#        return StatsList, ParamsList, GOFlist, fitTCs, rawTCs, test_BWs, Bandwidths, Baselines, RawStatsList, function_class_fit
+#def makeFeaturesDict(GOFlist,StatsList, ParamsList,rawTCs,fitTCs,Bandwidths,test_BWs,Baselines,BLisZeroBW,Celltype,Response_type, RawStatsList =None, function_class_fit="carandini_fit"):
 
-#-------------------------------------------------------------------------------
-def makeFeaturesDict(GOFlist,StatsList,ParamsList,rawTCs,fitTCs,Bandwidths,test_BWs,Baselines,BLisZeroBW,Celltype,Response_type):
 #package the fit-parameters and TC-features of all cells of a given type into a "features dictionary"
-    TCfeatures = {'CarandiniParams': {},'MiscParams': {},'GoF': {},\
+    # if function_class_fit=="carandini_fit":
+    # elif function_class_fit=="diff_of_gauss_fit":
+    TCfeatures = {'CarandiniParams': {},'MiscParams': {},'GoF': {},'RawMiscParams': {},\
                   'fitTCs': fitTCs, 'rawTCs': rawTCs,'test_BWs': test_BWs, 'Bandwidths': Bandwidths,\
                   'Baselines': Baselines, 'BLisZeroBW': BLisZeroBW, 'Ncells': rawTCs.shape[1],\
-                  'Celltype': Celltype,'Response_type': Response_type}
+                  'Celltype': Celltype,'Response_type': Response_type, 'Fit_curve_type': function_class_fit}
 
     #package goodness-of-fit parameters
     TCfeatures['GoF']['R2'] = np.asarray([stats['R2'] for stats in GOFlist])
@@ -312,6 +326,33 @@ def makeFeaturesDict(GOFlist,StatsList,ParamsList,rawTCs,fitTCs,Bandwidths,test_
     #     TCfeatures['MiscParams']['SuppInd_noBL'] = 1 - TCfeatures['MiscParams']['wnResp']/TCfeatures['MiscParams']['peakResp']
     # TCfeatures['MiscParams']['peakSignedResp'] = (TCfeatures['MiscParams']['peakResp'] > np.abs(TCfeatures['MiscParams']['peakNegResp']))*TCfeatures['MiscParams']['peakResp'] + (TCfeatures['MiscParams']['peakResp'] < np.abs(TCfeatures['MiscParams']['peakNegResp']))*TCfeatures['MiscParams']['peakNegResp']
 
+    if RawStatsList is not None:
+        #package Raw Miscellaneous tuning curve parameters
+        TCfeatures['RawMiscParams']['Baseline'] = TCfeatures['Baselines']
+        if BLisZeroBW:
+            TCfeatures['RawMiscParams']['peakResp'] = np.asarray([stats['maxResp'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['peakNegResp'] = np.asarray([stats['maxNegResp'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['peakAbsResp'] = np.asarray([stats['maxAbsResp'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['peakRate'] = TCfeatures['RawMiscParams']['peakResp'] + TCfeatures['RawMiscParams']['Baseline']
+            TCfeatures['RawMiscParams']['prefBW'] = np.asarray([stats['prefBW'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['AbsPrefBW'] = np.asarray([stats['AbsPrefBW'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['wnResp'] = np.asarray([stats['wnResp'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['wnRate'] = TCfeatures['RawMiscParams']['wnResp'] + TCfeatures['RawMiscParams']['Baseline']
+            TCfeatures['RawMiscParams']['SuppInd_noBL'] = np.asarray([stats['SuppInd'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['SuppInd_wBL'] = 1 - TCfeatures['RawMiscParams']['wnRate']/TCfeatures['RawMiscParams']['peakRate']
+        else:
+            TCfeatures['RawMiscParams']['peakRate'] = np.asarray([stats['maxResp'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['peakResp'] = TCfeatures['RawMiscParams']['peakRate'] - TCfeatures['RawMiscParams']['Baseline']
+            TCfeatures['RawMiscParams']['prefBW'] = np.asarray([stats['prefBW'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['AbsPrefBW'] = TCfeatures['test_BWs'][np.argmax(np.abs(TCfeatures['fitTCs']-TCfeatures['Baselines']),axis=0)] #uses broadcasting
+            TCfeatures['RawMiscParams']['peakAbsResp'] = np.max(np.abs(TCfeatures['fitTCs']-TCfeatures['Baselines']),axis=0)
+            TCfeatures['RawMiscParams']['peakNegResp'] = -np.max(-(TCfeatures['fitTCs']-TCfeatures['Baselines']),axis=0)
+            TCfeatures['RawMiscParams']['wnRate'] = np.asarray([stats['wnResp'] for stats in RawStatsList])
+            TCfeatures['RawMiscParams']['wnResp'] = TCfeatures['RawMiscParams']['wnRate'] - TCfeatures['BLisZeroBW']*TCfeatures['RawMiscParams']['Baseline']
+            TCfeatures['RawMiscParams']['SuppInd_noBL'] = 1 - TCfeatures['RawMiscParams']['wnResp']/TCfeatures['RawMiscParams']['peakResp']
+            TCfeatures['RawMiscParams']['SuppInd_wBL'] = np.asarray([stats['SuppInd'] for stats in RawStatsList])
+        TCfeatures['RawMiscParams']['peakSignedResp'] = (TCfeatures['RawMiscParams']['peakResp'] > np.abs(TCfeatures['RawMiscParams']['peakNegResp']))*TCfeatures['RawMiscParams']['peakResp'] + (TCfeatures['RawMiscParams']['peakResp'] < np.abs(TCfeatures['RawMiscParams']['peakNegResp']))*TCfeatures['RawMiscParams']['peakNegResp']
+
 
     #package Carandini parameters
     for keyname in ParamsList[0]:
@@ -356,9 +397,11 @@ def makeFeaturesDict(GOFlist,StatsList,ParamsList,rawTCs,fitTCs,Bandwidths,test_
     #print(" , ".join(TCparamNames))
     CarandiniParamsLabels = dict(zip(TCparamNames, TCparamNames))
     CarandiniParamsLabels['m'] = '$m$'
-    CarandiniParamsLabels['R0'] = '$R_0$ (Hz)'
+    CarandiniParamsLabels['R0'] = '$R_{Bl}$ (Hz)'
     CarandiniParamsLabels['RD'] = '$R_D$ (Hz)'
     CarandiniParamsLabels['RS'] = '$R_S$'
+    if function_class_fit=="diff_of_gauss_fit":
+        CarandiniParamsLabels['RS'] = '$R_S (Hz)$'
     CarandiniParamsLabels['sigmaD'] = '$\sigma_D$ (Oct.)'
     CarandiniParamsLabels['sigmaS'] = '$\sigma_S$ (Oct.)'
     TCfeatures['CarandiniParamsLabels'] = CarandiniParamsLabels
