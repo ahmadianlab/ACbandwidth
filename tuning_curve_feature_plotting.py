@@ -29,7 +29,19 @@ def makeHistograms(TCfeatures, TCparamNames, ParamLabels, CelltypeLabel,betterOr
         #plt.show()
 
 #-------------------------------------------------------------------------------
-def makeScatterPlots(TCfeatures, TCparamNames, ParamLabels, pairs,uniformYs=False,cols=3,figsize=(15,8),hspace=.3,wspace=None,symm=False,linecolor='k'):
+def makeScatterPlots(TCfeatures, TCparamNames, ParamLabels, pairs,\
+        uniformYs=False, uniformXs = False, symm=False,\
+        cols=3,figsize=(15,8),hspace=.3,wspace=None,linecolor='k',\
+        yTCfeatures=None, yTCparamsNames=None, yTCparamsLabels=None):
+
+    if yTCfeatures is not None:
+        if yTCparamsNames is None:
+            yTCparamsNames = TCparamNames
+            yTCparamsLabels = ParamLabels
+        else:
+            assert yTCparamsLabels is not None #if yTCparamsNames is not none, then yTCparamsLabels cannot be None either
+
+    sig_vec = np.zeros((len(pairs),))
     rows = 1 + (len(pairs) // cols)
     plt.figure(figsize=figsize)
     if wspace is None:
@@ -43,12 +55,20 @@ def makeScatterPlots(TCfeatures, TCparamNames, ParamLabels, pairs,uniformYs=Fals
             plt.subplot(rows,cols,sp+1)
             x_paramName = TCparamNames[pairs[sp][0]]
             xs = TCfeatures[x_paramName]
-            y_paramName = TCparamNames[pairs[sp][1]]
-            ys = TCfeatures[y_paramName]
+            xslabel = ParamLabels[x_paramName]
+            if yTCfeatures is None:
+                y_paramName = TCparamNames[pairs[sp][1]]
+                ys = TCfeatures[y_paramName]
+                yslabel = ParamLabels[y_paramName]
+            else:
+                y_paramName = yTCparamsNames[pairs[sp][1]]
+                ys = yTCfeatures[y_paramName]
+                yslabel = yTCparamsLabels[y_paramName]
             #    a,b,r,p = linregress(xs,ys)     #according to help, linregress should work like next line, but it doesn't:
             linobj = linregress(xs,ys)
             a, b, r, p = linobj.slope, linobj.intercept, linobj.rvalue, linobj.pvalue
             if p<0.05:
+                sig_vec[sp] = 1
                 c_scat = 'b'
                 c_line = linecolor #'k'
             else:
@@ -61,7 +81,8 @@ def makeScatterPlots(TCfeatures, TCparamNames, ParamLabels, pairs,uniformYs=Fals
             plt.scatter(np.mean(xs),np.mean(ys),c='#22bb22',s = 6**2,alpha = 1)
             plt.scatter(np.median(xs),np.median(ys),c='r',s = 5**2,alpha = 1)
             plt.text(xs1[0] + .5 * np.diff(xs1),ys1[0] + .6 * np.diff(ys1),'r = %1.2f\np = %1.3f' % (r,p))
-            if not (symm and col-row != 1):
-                plt.xlabel(ParamLabels[x_paramName])
+            if (not uniformXs and not (symm and col-row != 1) ) or (uniformXs and row == 1 + ((len(pairs)-1) // cols)):
+                plt.xlabel(xslabel)
             if (symm and col-row==1) or (not symm and (not uniformYs or sp%cols==0)):
-                plt.ylabel(ParamLabels[y_paramName])
+                plt.ylabel(yslabel)
+    return sig_vec
