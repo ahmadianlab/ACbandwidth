@@ -233,14 +233,20 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=None, function
 
 
 #-------------------------------------------------------------------------------
-def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=None, function_class_fit="carandini_fit"):
+def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=None, function_class_fit="carandini_fit", INACTIVATION=False,laser=None):
 # fit all cells in a data-file with Carandini form (default) or the difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
 # and package the fit-parameters and TC-features of all cells of a given type into a "features dictionary"
-
     data = np.load(Datafile)
-    EvokedRates = data[Celltype+Response_type+'Responses']
-    Baselines = data[Celltype+Response_type+'BaselineSpikeRates']
-    Bandwidths = data['stimulusBandwidth']
+    if not INACTIVATION:
+        EvokedRates = data[Celltype+Response_type+'Responses']
+        Baselines = data[Celltype+Response_type+'BaselineSpikeRates']
+        Bandwidths = data['stimulusBandwidth']
+    else:
+        #interpret Celltype as the cells that were inactivated
+        assert laser is not None
+        EvokedRates = data['no'+Celltype+Response_type+'Responses'][:,laser,:]
+        Baselines = data[Celltype+'BaselineSpikeRates'][laser,:]
+        Bandwidths = data['bandwidths']
     data.close()
 
     Bandwidths[-1] = WNoctave #white noise BW set to WNoctave octaves
