@@ -1,3 +1,7 @@
+# Wrote this script to run in nearly identical notebooks
+# for different cell types, by first assigning a number to nb_cell
+# and then running:
+# %run -i celltype_identified_TCfits_nb
 
 if nb_cell == 0:
     print('importing modules\n')
