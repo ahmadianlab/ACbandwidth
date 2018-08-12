@@ -233,7 +233,7 @@ def extract_stats_from_fit(stimuli, responses, test_stims, mFixed=None, function
 
 
 #-------------------------------------------------------------------------------
-def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=None, function_class_fit="carandini_fit", INACTIVATION=False,laser=None):
+def fit_all_cells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave = 6, NtestBWs = 50, mFixed=None, function_class_fit="carandini_fit", INACTIVATION=False,laser=None):
 # fit all cells in a data-file with Carandini form (default) or the difference-of-Gaussians-form (if function_class_fit = diff_of_gauss_fit)
 # and package the fit-parameters and TC-features of all cells of a given type into a "features dictionary"
     data = np.load(Datafile)
@@ -370,7 +370,7 @@ def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave =
     #create plotting labels for goodness-of-fit parameters
     GoFNames = list(TCfeatures['GoF'].keys())
     GoFNames.sort()
-    TCfeatures['GoFNames'] = GoFNames
+#    TCfeatures['GoFNames'] = GoFNames
     #print(" , ".join(TCparamNames))
     GoFLabels = dict(zip(GoFNames, GoFNames))
     GoFLabels['R2'] = '$R^2$'
@@ -379,7 +379,7 @@ def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave =
     #create plotting labels for miscellaneous TC parameters
     TCparamNames = list(TCfeatures['MiscParams'].keys())
     TCparamNames.sort()
-    TCfeatures['MiscParamsNames'] = TCparamNames
+#    TCfeatures['MiscParamsNames'] = TCparamNames
     #print(" , ".join(TCparamNames))
     MiscParamsLabels = {}
     MiscParamsLabels['AbsPrefBW'] = 'BW of max abs response (Oct.)'
@@ -399,7 +399,7 @@ def FitAllCells(Datafile, Celltype, Response_type, BLisZeroBW = True, WNoctave =
     #create plotting labels for Carandini parameters
     TCparamNames = list(TCfeatures['CarandiniParams'].keys())
     TCparamNames.sort()
-    TCfeatures['CarandiniParamsNames'] = TCparamNames
+#    TCfeatures['CarandiniParamsNames'] = TCparamNames
     #print(" , ".join(TCparamNames))
     CarandiniParamsLabels = dict(zip(TCparamNames, TCparamNames))
     CarandiniParamsLabels['m'] = '$m$'

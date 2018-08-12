@@ -5,6 +5,7 @@ from scipy.stats import linregress
 #-------------------------------------------------------------------------------
 def makeHistograms(TCfeatures, TCparamNames, ParamLabels, CelltypeLabel,betterOrder,\
                     cell_inds=None,nbins=30,cols=2,figsize=(10,17),hspace=.5):
+    #TCparamNames = list(TCfeatures.keys()).sort()
     rows = 1 + (len(TCparamNames) // cols)
     fig = plt.figure(figsize=figsize)
     fig.subplots_adjust(hspace=hspace)
@@ -29,12 +30,13 @@ def makeHistograms(TCfeatures, TCparamNames, ParamLabels, CelltypeLabel,betterOr
         ax.text(xpos, ax.get_ylim()[1]*(relypos-dy), 'SD = %1.2f' % np.std(xs))
         #ax.axis('tight') #plt.axis('tight')
         #ax.grid(True)
-    #fig.show()   ##plt.show()
+    #fig.show()
+    #plt.show()
 
 #-------------------------------------------------------------------------------
-def makeScatterPlots(TCfeatures, TCparamNames, ParamLabels, pairs,\
-        uniformYs=False, uniformXs = False, symm=False,\
-        cols=3,figsize=(15,8),hspace=.3,wspace=None,linecolor='k',\
+def makeScatterPlots(TCfeatures, TCparamNames, ParamLabels, pairs,
+        uniformYs=False, uniformXs = False, symm=False, axis_equal=False,
+        cols=3,figsize=(15,8),hspace=.3,wspace=None,linecolor='k',
         cell_inds=None, yTCfeatures=None, yTCparamsNames=None, yTCparamsLabels=None):
 
     if yTCfeatures is not None:
@@ -92,4 +94,8 @@ def makeScatterPlots(TCfeatures, TCparamNames, ParamLabels, pairs,\
                 plt.xlabel(xslabel)
             if (symm and col-row==1) or (not symm and (not uniformYs or sp%cols==0)):
                 plt.ylabel(yslabel)
+            if axis_equal:
+                plt.axis('equal')
+                plt.plot(xs1,xs1,'k--')
+    #plt.show()
     return sig_vec
